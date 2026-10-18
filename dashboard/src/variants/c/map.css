@@ -1,0 +1,268 @@
+/* Variant C - Map Canvas. All selectors are prefixed with .vc- to stay local. */
+
+.vc-map.leaflet-container {
+  background: var(--muted);
+  font-family: inherit;
+}
+
+/* Calm, desaturated base map; inverted for dark mode. */
+.vc-map .leaflet-tile-pane {
+  filter: saturate(0.55) contrast(0.95) brightness(1.03);
+}
+.dark .vc-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.82) contrast(0.92);
+}
+
+/* Controls as glass chips */
+.vc-map .leaflet-control-zoom {
+  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent) !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+  box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.25) !important;
+  backdrop-filter: blur(16px);
+}
+.vc-map .leaflet-control-zoom a {
+  background: color-mix(in oklch, var(--background) 82%, transparent) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+  width: 34px !important;
+  height: 34px !important;
+  line-height: 34px !important;
+}
+.vc-map .leaflet-control-zoom a:hover {
+  background: var(--muted) !important;
+}
+.vc-map .leaflet-control-attribution {
+  background: color-mix(in oklch, var(--background) 75%, transparent) !important;
+  color: var(--muted-foreground) !important;
+  border-radius: 8px 0 0 0;
+  backdrop-filter: blur(8px);
+  font-size: 10px;
+}
+.vc-map .leaflet-control-attribution a {
+  color: var(--foreground) !important;
+}
+.vc-map .leaflet-bottom {
+  transition: bottom 300ms ease;
+  bottom: var(--vc-bottom-inset, 0px);
+}
+.vc-map .leaflet-right {
+  right: var(--vc-right-inset, 0px);
+  transition: right 300ms ease;
+}
+
+/* Theme-aware vector strokes (presentation attributes can't use CSS vars) */
+.vc-drain {
+  stroke: var(--foreground);
+  stroke-opacity: 0.18;
+}
+.vc-ghost {
+  stroke: var(--muted-foreground);
+  fill: var(--background);
+  stroke-opacity: 0.8;
+  fill-opacity: 0.9;
+}
+.vc-wet-ring {
+  stroke: var(--foreground);
+  stroke-opacity: 0.55;
+  fill: none;
+}
+.vc-select-ring {
+  stroke: var(--foreground);
+  fill: none;
+}
+.vc-cell-selected {
+  stroke: var(--foreground) !important;
+  stroke-opacity: 1 !important;
+}
+.vc-report-link {
+  stroke: var(--foreground);
+  stroke-opacity: 0.45;
+}
+
+/* Link flash when an uplink arrives */
+.vc-link-flash {
+  stroke: var(--foreground);
+  stroke-dasharray: 6 10;
+  animation: vc-dash 1.6s linear forwards;
+}
+@keyframes vc-dash {
+  0% {
+    stroke-dashoffset: 64;
+    stroke-opacity: 0.95;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 0;
+  }
+}
+
+/* divIcon resets */
+.vc-icon {
+  background: none !important;
+  border: none !important;
+}
+
+/* Expanding ring for an uplink arrival */
+.vc-ping {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid var(--vc-c, currentColor);
+  animation: vc-ping 1.6s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+@keyframes vc-ping {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+/* Continuous pulse (RED nodes, live bench) */
+.vc-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: var(--vc-c, currentColor);
+  animation: vc-pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes vc-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.55;
+  }
+  80%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+/* Live test-bench marker */
+.vc-bench {
+  position: relative;
+  width: 44px;
+  height: 44px;
+}
+.vc-bench-core {
+  position: absolute;
+  inset: 8px;
+  border-radius: 14px;
+  background: var(--foreground);
+  color: var(--background);
+  display: grid;
+  place-items: center;
+  box-shadow:
+    0 0 0 3px var(--vc-c),
+    0 10px 24px -8px rgb(0 0 0 / 0.45);
+}
+
+/* Gateway marker */
+.vc-gw {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1.5px solid var(--foreground);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 20px -10px rgb(0 0 0 / 0.5);
+}
+
+/* Alert pin */
+.vc-pin {
+  position: relative;
+  width: 34px;
+  height: 42px;
+}
+.vc-pin-head {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--vc-c);
+  border: 2px solid var(--background);
+  box-shadow: 0 8px 18px -8px rgb(0 0 0 / 0.55);
+}
+.vc-pin-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font: 600 11px/1 ui-monospace, monospace;
+  color: white;
+}
+.vc-pin[data-selected="true"] .vc-pin-head {
+  border-color: var(--foreground);
+  border-width: 3px;
+}
+
+/* Surface report diamond */
+.vc-report {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+}
+.vc-report-shape {
+  width: 14px;
+  height: 14px;
+  transform: rotate(45deg);
+  border-radius: 3px;
+  background: var(--background);
+  border: 2px solid var(--foreground);
+  box-shadow: 0 4px 12px -6px rgb(0 0 0 / 0.6);
+}
+
+/* Map labels and tooltips */
+.vc-zone-label {
+  font: 600 10px/1.2 var(--font-sans, sans-serif);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  text-shadow:
+    0 0 3px var(--background),
+    0 0 6px var(--background);
+}
+.vc-tip.leaflet-tooltip {
+  background: color-mix(in oklch, var(--background) 88%, transparent);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 24px -14px rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(10px);
+  padding: 4px 8px;
+  font-size: 11px;
+}
+.vc-tip.leaflet-tooltip::before {
+  display: none;
+}
+.vc-tip-mini.leaflet-tooltip {
+  padding: 1px 5px;
+  font: 600 10px/1.4 ui-monospace, monospace;
+  border-radius: 6px;
+}
+
+/* New uplink row flash in the live feed */
+.vc-row-new {
+  animation: vc-row 2.4s ease-out;
+}
+@keyframes vc-row {
+  0% {
+    background: color-mix(in oklch, var(--foreground) 14%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
