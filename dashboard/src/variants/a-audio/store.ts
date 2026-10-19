@@ -2,16 +2,30 @@ import { useEffect, useSyncExternalStore } from "react"
 import {
   calculateAcousticVri,
   ClipPlayer,
+  computeStft,
+  getAudioContext,
   generateSyntheticRuns,
   parseUploadedWavFiles,
 } from "./audio-engine"
+import { connectLive, disconnectLive, type LiveConfig, type LiveStatus, type Telemetry } from "./live-mqtt"
 import type { AudioClip, AudioRun, PlaybackState, VriMetrics } from "./types"
 
 export type Colormap = "inferno" | "jet" | "viridis" | "mono"
 export const CMAPS: Colormap[] = ["inferno", "jet", "viridis", "mono"]
 export type SelectedCondition = "all" | "safe" | "ambient" | "void"
 
+export interface LiveState extends LiveConfig {
+  status: LiveStatus
+  error: string | null
+  packets: number
+  bytes: number
+  telemetry: Telemetry[] // newest last, capped
+}
+
+const LIVE_RUN_ID = "live_run"
+
 interface AudioStoreState {
+  live: LiveState
   runs: AudioRun[]
   selectedCondition: SelectedCondition
   selectedRunId: string
@@ -48,6 +62,16 @@ let state: AudioStoreState = {
   gain: 1,
   isLoading: false,
   error: null,
+  live: {
+    url: "wss://broker.hivemq.com:8884/mqtt",
+    topic: "sentinel/acoustic/telemetry",
+    sampleRate: 16000,
+    status: "idle",
+    error: null,
+    packets: 0,
+    bytes: 0,
+    telemetry: [],
+  },
 }
 
 // Recompute VRIs whenever runs or baseline changes
@@ -291,7 +315,96 @@ export const audioStore = {
     }
   },
 
+  startLive(cfg: Partial<LiveConfig>) {
+    const live = { ...state.live, ...cfg }
+    state = { ...state, live: { ...live, status: "connecting", error: null, packets: 0, bytes: 0, telemetry: [] } }
+    emit()
+    connectLive(live, {
+      onStatus: (status, error) => {
+        state = { ...state, live: { ...state.live, status, error: error ?? null } }
+        emit()
+      },
+      onPacket: (bytes) => {
+        state = {
+          ...state,
+          live: { ...state.live, packets: state.live.packets + 1, bytes: state.live.bytes + bytes },
+        }
+        emit()
+      },
+      onTelemetry: (t) => {
+        state = {
+          ...state,
+          live: { ...state.live, telemetry: [...state.live.telemetry.slice(-119), t] },
+        }
+        emit()
+      },
+      onWindow: (pcm, sampleRate) => audioStore.pushLive(pcm, sampleRate),
+    })
+  },
+
+  stopLive() {
+    disconnectLive()
+    state = { ...state, live: { ...state.live, status: "idle", error: null } }
+    emit()
+  },
+
+  /** Replaces the single "LIVE" run with the latest rolling window of streamed PCM. */
+  pushLive(pcm: Float32Array, sampleRate: number) {
+    const buffer = getAudioContext().createBuffer(1, pcm.length, sampleRate)
+    buffer.getChannelData(0).set(pcm)
+    const stft = computeStft(buffer, 512)
+    const durationSec = pcm.length / sampleRate
+    const clip: AudioClip = {
+      id: `live_clip_${Date.now()}`,
+      runNumber: 0,
+      clipIndex: 1,
+      name: "LIVE MQTT",
+      condition: "ambient",
+      durationSec,
+      audioBuffer: buffer,
+      waveform: stft.waveform,
+      stftFrames: stft.slices,
+      stftHopSec: 512 / sampleRate,
+      rmsDb: stft.rmsDb,
+      peakHz: stft.peakHz,
+      centroidHz: stft.centroidHz,
+      bandDb: stft.bandDb,
+    }
+    const liveRun: AudioRun = {
+      id: LIVE_RUN_ID,
+      runNumber: 0,
+      condition: "ambient",
+      name: "LIVE (MQTT)",
+      clips: [clip],
+      avgRmsDb: Math.round(stft.rmsDb * 10) / 10,
+      avgPeakHz: stft.peakHz,
+      vriScore: 0,
+      state: "GREEN",
+      isBaseline: false,
+      isSynthetic: false,
+    }
+    const runs = [liveRun, ...state.runs.filter((r) => r.id !== LIVE_RUN_ID)]
+    const wasFollowing =
+      state.selectedRunId === LIVE_RUN_ID || !state.runs.some((r) => r.id === LIVE_RUN_ID)
+    const p = getPlayer()
+    if (wasFollowing && !state.playback.isPlaying) p.loadClip(buffer)
+
+    // Park the cursor at the newest frame so the waterfall/spectrum show "now"
+    const tail = Math.max(0, durationSec - 2 * clip.stftHopSec)
+    state = {
+      ...state,
+      runs: updateVris(runs, state.baselineRunId),
+      selectedRunId: wasFollowing ? LIVE_RUN_ID : state.selectedRunId,
+      selectedClipIndex: wasFollowing ? 1 : state.selectedClipIndex,
+      playback: wasFollowing
+        ? { ...state.playback, duration: durationSec, currentTime: state.playback.isPlaying ? state.playback.currentTime : tail }
+        : state.playback,
+    }
+    emit()
+  },
+
   resetToSynthetic() {
+    audioStore.stopLive()
     const syn = generateSyntheticRuns()
     const baseId = syn[0]?.id || "run_1"
     const withVri = updateVris(syn, baseId)

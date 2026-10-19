@@ -14,6 +14,7 @@ import { audioStore, CMAPS, getActiveClip, getActiveRun, getBaselineRun, useAudi
 import { Pane } from "../ui"
 import { FeatureTable } from "../widgets/feature-table"
 import { FileListPanel } from "../widgets/file-list-panel"
+import { LiveTelemetryBar } from "../widgets/live-telemetry-bar"
 import { PlayerBar } from "../widgets/player-bar"
 import { RunNavigator } from "../widgets/run-navigator"
 import { RunsMatrix } from "../widgets/runs-matrix"
@@ -41,6 +42,8 @@ export function AudioConsole() {
       <RunNavigator />
 
       {/* Audio Playback & Scrubber Controls */}
+      <LiveTelemetryBar />
+
       <PlayerBar />
 
       {/* Main Multi-Panel Workspace */}

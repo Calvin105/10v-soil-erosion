@@ -28,6 +28,7 @@ import {
   useAudioStore,
 } from "../store"
 import { Dot, StatePill } from "../ui"
+import { LiveMqttPopover } from "./live-mqtt-popover"
 
 export function RunNavigator() {
   const s = useAudioStore()
@@ -216,6 +217,8 @@ export function RunNavigator() {
             SYNTHETIC BENCH AUDIO
           </Badge>
         )}
+
+        <LiveMqttPopover />
 
         <Button
           size="xs"
