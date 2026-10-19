@@ -13,16 +13,23 @@ import {
 
 const VARIANTS = [
   {
+    to: "/a-audio",
+    tag: "A-Audio",
+    title: "Control Room (.WAV Runs)",
+    body: "Single-sensor (INMP441 mic) operations console. Audio playback, 10s spectrogram, FFT vs baseline, and 18-run matrix.",
+    featured: true,
+  },
+  {
     to: "/a",
     tag: "A",
-    title: "Control Room",
-    body: "Dense, everything-at-once operations console. Sidebar navigation, multi-panel live monitoring.",
+    title: "Control Room (Dual Sensor)",
+    body: "Dense operations console with simulated mic + piezo vibration sensor streams.",
   },
   {
     to: "/b",
     tag: "B",
     title: "Command Hierarchy",
-    body: "Action-first and hierarchical. Drill down Township -> Zone -> Manhole -> Sensor, then act with verbs, queues and progress bars.",
+    body: "Action-first and hierarchical. Drill down Township -> Zone -> Manhole -> Sensor.",
   },
   {
     to: "/c",
@@ -42,13 +49,22 @@ export function Launcher() {
           Three layout directions over the same simulated data. Press <kbd>d</kbd> to toggle dark mode.
         </p>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {VARIANTS.map((v) => (
-          <Card key={v.to}>
+          <Card key={v.to} className={v.featured ? "border-primary/50 shadow-md ring-1 ring-primary/20" : ""}>
             <CardHeader>
-              <Badge className="w-fit">{v.tag}</Badge>
-              <CardTitle>{v.title}</CardTitle>
-              <CardDescription>{v.body}</CardDescription>
+              <div className="flex items-center justify-between">
+                <Badge variant={v.featured ? "default" : "secondary"} className="w-fit">
+                  {v.tag}
+                </Badge>
+                {v.featured && (
+                  <span className="font-mono text-[10px] font-semibold text-primary uppercase">
+                    New (.WAV)
+                  </span>
+                )}
+              </div>
+              <CardTitle className="text-base">{v.title}</CardTitle>
+              <CardDescription className="text-xs">{v.body}</CardDescription>
             </CardHeader>
             <CardFooter className="mt-auto">
               <Button asChild className="w-full">
