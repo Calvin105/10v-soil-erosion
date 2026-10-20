@@ -64,10 +64,28 @@ A **full-screen map** (Leaflet; reuse the tile setup in `variants/c/map-canvas.t
 - Three thin bars for safe, ambient and void probability. Peak frequency goes in small muted text.
 - "Network: 9 healthy · 1 investigate · 0 critical" as one line.
 - A list of currently flagged pipes or manholes, at most 3 rows. Clicking a row flies the map to it.
+- The top bar contains only: the title, a Network/Compare switch, a live connection dot, **"Report a problem"** and **"Tickets (n)"**.
 
-**Reporting**
-- When any node enters RED, append an **incident** to an in-memory list. An incident records the time, manhole, VRI, class probabilities, suspect pipe(s) and a recommended action. For example: "Dispatch crew to inspect pipe MH-03 → MH-04; restrict heavy vehicles on Jalan X until cleared."
-- Add a "Report" button in the top bar. It opens a shadcn `Sheet` with the incident list, plus a **"Download report"** action that produces a clean one-page printable summary using `window.print()` and a print stylesheet. The summary has a header, network status counts, the incident table and the recommended actions. Don't write a PDF library integration.
+**Ground risk zones (sinkhole likelihood)**
+- Only around problem pipes and manholes. Healthy areas get **no colour at all**, so red on the map always means something.
+- Around each suspect or critical pipe, draw a soft band in three steps: **High** (about 30 m), **Medium** (about 60 m) and **Low** (about 100 m). Use semi-transparent red, orange and yellow that fade out toward neutral. Use Leaflet `Circle`s with the radius in **metres**, sampled every ~15 m along the pipe, so the band scales correctly when zooming. Don't use pixel-width polylines. For a critical pipe, use the full three steps. For a suspect pipe, start at Medium.
+- Add a three-row legend in a map corner: "Ground risk: High / Medium / Low". The tooltip on a zone reads: "Soil loss likely near pipe MH-03 → MH-04. Possible sinkhole risk."
+- Do **not** build a grid heatmap or reuse `riskCells` from the seed. Keep the risk tied to the pipes.
+
+**Reporting and tickets (citizens can report, everything lands in one ticket list)**
+- Put a prominent **"Report a problem"** button on the map, as a citizen would use it. Flow, in a small dialog:
+  1. Click a spot on the map, or "Use my location".
+  2. Pick a category: Cracked road / Road sinking or dip / Water pooling / Strange sound.
+  3. Optionally add a note, then submit.
+  Keep it to three steps at most. On submit, a citizen pin appears on the map and a toast confirms: "Report received: ticket #T-0123".
+- **One ticket list for both sources.** Sensor alerts (a node entering RED, a pipe becoming critical) and citizen reports create tickets in the same list.
+  - Show it in a right-side `Sheet`, opened by a **"Tickets (n)"** button in the top bar with a count badge for New tickets.
+  - Each ticket is **one row**: a source icon (sensor or citizen), a short title, the place (nearest manhole or pipe), how long ago it came in, and a status chip.
+  - The status chip moves through New → Assigned → Resolved. Clicking the chip advances it. There's no ticket detail page.
+  - Clicking a row flies the map to that ticket's location.
+- **Cross-check, the key story for judges:** if a citizen report falls inside a ground risk zone or within ~100 m of a suspect pipe, tag both tickets **"Matches sensor alert"** and move them to the top. Do the same the other way round: when a pipe becomes suspect, existing nearby citizen reports get linked. This shows the sensor and the public confirming each other.
+- Seed 3 or 4 citizen tickets so the list isn't empty: 2 near the scripted simulated fault, which should show as matched, and 1 or 2 elsewhere, which should show as unmatched and low priority. Label them "Simulated".
+- Optional, only if there's time: an "Export" button that prints the ticket list with `window.print()` and a print stylesheet. Don't integrate a PDF library.
 
 **Remove these:** time scrubbers, playback, run or clip selectors, baselines, LoRa or battery details and multi-panel layouts.
 
@@ -100,6 +118,7 @@ Below both columns, add **one "What's different" strip**. It gives 2 or 3 auto-g
 - `pnpm typecheck` and `pnpm lint` pass in `dashboard/`.
 - `/#/d` loads with the map. The prototype dot reflects real MQTT messages from `sentinel/acoustic/telemetry`. Test this by running a quick publisher, for example `npx mqtt pub -h broker.hivemq.com -p 8883 -l mqtts -t sentinel/acoustic/telemetry -m '{"ambient":2,"critical_void":91,"safe_soil":7,"peak":1650}'`, and confirming the dot goes RED and the adjacent pipes turn suspect.
 - With the network disconnected, the demo feed kicks in after 10 s and is labelled as demo data.
-- An incident appears when a node goes RED, and the printed report looks clean.
+- When the prototype goes RED, a sensor ticket appears, a High/Medium/Low ground risk band appears around its suspect pipes, and any seeded citizen report inside that band shows "Matches sensor alert".
+- A new citizen report takes at most 3 clicks and appears both as a map pin and as a ticket.
 - On `/#/d/compare`, the void and ambient defaults render immediately with full-length spectrograms and overlaid spectra. Dropping a different `.wav` into either column updates that column and the "What's different" strip.
 - Nothing from variants a, a-audio, b or c changed, apart from the shared `App.tsx` route and `launcher.tsx` card.

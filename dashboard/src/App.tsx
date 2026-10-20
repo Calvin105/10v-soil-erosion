@@ -5,6 +5,7 @@ import VariantA from "@/variants/a"
 import VariantAAudio from "@/variants/a-audio"
 import VariantB from "@/variants/b"
 import VariantC from "@/variants/c"
+import VariantD from "@/variants/d"
 
 export function App() {
   return (
@@ -14,6 +15,7 @@ export function App() {
       <Route path="/a-audio/*" element={<VariantAAudio />} />
       <Route path="/b/*" element={<VariantB />} />
       <Route path="/c/*" element={<VariantC />} />
+      <Route path="/d/*" element={<VariantD />} />
     </Routes>
   )
 }

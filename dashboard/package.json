@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc -b",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sim": "node scripts/interactive-sim.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

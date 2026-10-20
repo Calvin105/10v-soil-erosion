@@ -13,11 +13,17 @@ import {
 
 const VARIANTS = [
   {
+    to: "/d",
+    tag: "D",
+    title: "Judge View",
+    body: "Simplified hackathon presentation view: full-screen pipe network map, live MQTT void localization, downloadable incident report, and side-by-side WAV comparison.",
+    featured: true,
+  },
+  {
     to: "/a-audio",
     tag: "A-Audio",
     title: "Control Room (.WAV Runs)",
     body: "Single-sensor (INMP441 mic) operations console. Audio playback, 10s spectrogram, FFT vs baseline, and 18-run matrix.",
-    featured: true,
   },
   {
     to: "/a",
@@ -41,15 +47,15 @@ const VARIANTS = [
 
 export function Launcher() {
   return (
-    <div className="mx-auto flex min-h-svh max-w-5xl flex-col justify-center gap-8 p-6">
+    <div className="mx-auto flex min-h-svh max-w-6xl flex-col justify-center gap-8 p-6">
       <div className="flex flex-col gap-2">
         <Badge variant="outline" className="w-fit">Frontend prototypes - seed data only</Badge>
         <h1 className="text-3xl font-semibold tracking-tight">Subsurface Sentinel</h1>
         <p className="text-muted-foreground">
-          Three layout directions over the same simulated data. Press <kbd>d</kbd> to toggle dark mode.
+          Five layout directions over the same sensor data. Press <kbd>d</kbd> to toggle dark mode.
         </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {VARIANTS.map((v) => (
           <Card key={v.to} className={v.featured ? "border-primary/50 shadow-md ring-1 ring-primary/20" : ""}>
             <CardHeader>
@@ -59,7 +65,7 @@ export function Launcher() {
                 </Badge>
                 {v.featured && (
                   <span className="font-mono text-[10px] font-semibold text-primary uppercase">
-                    New (.WAV)
+                    Featured
                   </span>
                 )}
               </div>

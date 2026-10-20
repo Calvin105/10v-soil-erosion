@@ -73,13 +73,11 @@ export function SpectrumLive({
 
     // Pick slice corresponding to playback time, or mid slice when paused at 0
     const dur = activeClip.durationSec || 10
-    let frameIdx = 0
-    if (s.playback.isPlaying || s.playback.currentTime > 0) {
-      const ratio = Math.max(0, Math.min(1, s.playback.currentTime / dur))
-      frameIdx = Math.min(frames.length - 1, Math.floor(ratio * frames.length))
-    } else {
-      frameIdx = Math.floor(frames.length / 2)
-    }
+    const ratio = Math.max(0, Math.min(1, s.playback.currentTime / dur))
+    const frameIdx =
+      s.playback.isPlaying || s.playback.currentTime > 0
+        ? Math.min(frames.length - 1, Math.floor(ratio * frames.length))
+        : Math.floor(frames.length / 2)
     const currentSlice = frames[frameIdx]
     if (!currentSlice) return
 

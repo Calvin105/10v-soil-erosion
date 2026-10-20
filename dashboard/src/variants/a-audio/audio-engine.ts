@@ -551,7 +551,7 @@ export async function parseUploadedWavFiles(files: FileList | File[]): Promise<A
         path.match(/safe[_\s-]?soil[_\s-]?(\d+)/i) ||
         path.match(/critical[_\s-]?void[_\s-]?(\d+)/i) ||
         path.match(/ambient[_\s-]?(\d+)/i) ||
-        path.match(/(\d+)[_\s\/-]/)
+        path.match(/(\d+)[_\s/-]/)
       const matchClip =
         path.match(/clip[_\s-]?(\d+)/i) ||
         path.match(/[-_](\d+)\.wav$/i) ||
