@@ -88,6 +88,20 @@ function emit() {
 // Track the previous prototype state so a sensor ticket is raised only on entry into RED
 let previousPrototypeState: NodeState = "GREEN"
 
+// Latches true on the first real MQTT message; from then on the scripted demo never runs
+let liveSeen = false
+
+/** Simulated MH-03 fault only exists in demo mode; real data replaces it with a healthy node. */
+function clearSimulatedFaults() {
+  const healthy = getInitialNodes()
+  const nodes = { ...state.nodes }
+  for (const id of Object.keys(nodes)) {
+    if (id !== PROTOTYPE_NODE_ID) nodes[id] = healthy[id] ?? nodes[id]
+  }
+  const pipes = evaluatePipes(nodes)
+  state = { ...state, nodes, pipes, tickets: evaluateTickets(state.tickets, pipes, nodes) }
+}
+
 const VRI_WINDOW = 5
 
 function processTelemetry(t: Telemetry, isDemo = false) {
@@ -187,84 +201,6 @@ function processTelemetry(t: Telemetry, isDemo = false) {
 }
 
 // -------------------------------------------------------------
-// Scripted Demo Feed (Fallback when MQTT silent >10s or user toggles)
-// -------------------------------------------------------------
-let demoTimer: ReturnType<typeof setInterval> | null = null
-let demoStep = 0
-
-function runDemoStep() {
-  demoStep = (demoStep + 1) % 50 // 50-second cyclical script
-
-  let safe: number
-  let voidVal: number
-  let ambient: number
-  let peak: number
-
-  if (demoStep < 20) {
-    // 0-20s: Healthy packed soil
-    safe = 94 + Math.sin(demoStep) * 2
-    voidVal = Math.max(0, 1 + Math.cos(demoStep))
-    ambient = 100 - safe - voidVal
-    peak = 7200 + Math.round(Math.sin(demoStep) * 150)
-  } else if (demoStep < 25) {
-    // 20-25s: Ramp up toward void
-    const progress = (demoStep - 20) / 5
-    safe = 95 * (1 - progress) + 5 * progress
-    voidVal = 2 * (1 - progress) + 92 * progress
-    ambient = 100 - safe - voidVal
-    peak = Math.round(7200 * (1 - progress) + 1650 * progress)
-  } else if (demoStep < 45) {
-    // 25-45s: Critical void detected
-    voidVal = 91 + Math.sin(demoStep * 0.8) * 4
-    safe = Math.max(0, 5 - Math.sin(demoStep * 0.5) * 2)
-    ambient = 100 - voidVal - safe
-    peak = 1650 + Math.round(Math.sin(demoStep) * 50)
-  } else {
-    // 45-50s: Ramp back down to healthy
-    const progress = (demoStep - 45) / 5
-    safe = 5 * (1 - progress) + 95 * progress
-    voidVal = 92 * (1 - progress) + 1 * progress
-    ambient = 100 - safe - voidVal
-    peak = Math.round(1650 * (1 - progress) + 7200 * progress)
-  }
-
-  processTelemetry(
-    {
-      safe_soil: Math.round(safe * 10) / 10,
-      critical_void: Math.round(voidVal * 10) / 10,
-      ambient: Math.round(ambient * 10) / 10,
-      peak,
-      t: Date.now(),
-    },
-    true
-  )
-}
-
-function startDemoFeed() {
-  if (demoTimer) return
-  demoTimer = setInterval(runDemoStep, 1000)
-  state = {
-    ...state,
-    isDemoFeed: true,
-    demoBadgeVisible: true,
-  }
-  emit()
-}
-
-function stopDemoFeed() {
-  if (demoTimer) {
-    clearInterval(demoTimer)
-    demoTimer = null
-  }
-  state = {
-    ...state,
-    isDemoFeed: false,
-    demoBadgeVisible: false,
-  }
-  emit()
-}
-
-// -------------------------------------------------------------
 // Health Monitoring & Auto-connect
 // -------------------------------------------------------------
 let healthCheckTimer: ReturnType<typeof setInterval> | null = null
@@ -283,9 +219,6 @@ export const variantDStore = {
   init() {
     if (isInitialized) return
     isInitialized = true
-
-    // Start demo feed immediately by default
-    startDemoFeed()
 
     // Connect MQTT automatically
     connectLive(
@@ -308,15 +241,10 @@ export const variantDStore = {
           console.log("[Variant D MQTT telemetry received]:", t)
           // Real data ALWAYS takes priority: stop demo feed immediately, and drop
           // scripted values from the smoothing window so they don't blend into real readings
-          if (state.isDemoFeed) {
-            stopDemoFeed()
+          if (!liveSeen) {
+            liveSeen = true
             state = { ...state, telemetryWindow: [] }
-          }
-          // Align demo step with incoming telemetry so fallback resumes smoothly
-          if (t.critical_void >= 70) {
-            demoStep = 30
-          } else {
-            demoStep = 5
+            clearSimulatedFaults()
           }
           processTelemetry(t, false)
         },
@@ -338,21 +266,13 @@ export const variantDStore = {
         const diffSec = Math.floor((now - lastSeen) / 1000)
         const offlineSec = diffSec >= 5 ? diffSec : 0
 
-        // If silent for 30s and demo feed not active, resume dynamic variability cycle
-        if (diffSec >= 30 && !state.isDemoFeed) {
-          startDemoFeed()
-        }
-
+        // Once live data has been seen, never fall back to the simulator; show Offline instead
         if (offlineSec !== state.offlineSeconds) {
           state = { ...state, offlineSeconds: offlineSec }
           emit()
         }
       } else {
-        // Has never received a real message yet
-        // If 10s elapsed since init, auto-engage demo feed
-        if (!state.isDemoFeed) {
-          startDemoFeed()
-        }
+        // No real message yet: stay idle (no simulated data)
       }
     }, 1000)
   },
@@ -360,8 +280,8 @@ export const variantDStore = {
   cleanup() {
     if (healthCheckTimer) clearInterval(healthCheckTimer)
     healthCheckTimer = null
-    stopDemoFeed()
     disconnectLive()
+    liveSeen = false
     isInitialized = false
   },
 
